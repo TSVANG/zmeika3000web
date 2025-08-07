@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Кибер-Змей 3000</title>
+    <!-- <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script> -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #00ffcc;
+            --secondary-color: #ff00ff;
+            --background-color: #0a0a1a;
+            --text-color: #ffffff;
+            --grid-color: rgba(0, 255, 204, 0.05);
+            --snake-head-color: #ffffff;
+            --snake-body-color: var(--primary-color);
+            --food-color: var(--secondary-color);
+            --obstacle-color: #ff3333;
+            --d-pad-color: #2a2a3a;
+            --d-pad-shadow: #1a1a2a;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            font-family: 'Orbitron', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            -ms-user-select: none;
+            touch-action: none;
+        }
+
+        #game-wrapper {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #game-container {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-grow: 1;
+            position: relative;
+        }
+
+        canvas {
+            background-color: transparent;
+            border-radius: 10px;
+            box-shadow: 0 0 20px var(--primary-color), 0 0 30px var(--secondary-color) inset;
+            border: 2px solid var(--primary-color);
+        }
+
+        .ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(10, 10, 26, 0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            z-index: 10;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            padding: 20px;
+            box-sizing: border-box;
+            overflow-y: auto;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .title {
+            font-size: clamp(2rem, 8vw, 4rem);
+            font-weight: 700;
+            color: var(--primary-color);
+            text-shadow: 0 0 10px var(--primary-color), 0 0 20px var(--text-color), 0 0 30px var(--secondary-color);
+            margin-bottom: 20px;
+            animation: flicker 1.5s infinite alternate;
+        }
+
+        .button {
+            background: transparent;
+            border: 2px solid var(--primary-color);
+            color: var(--primary-color);
+            padding: clamp(10px, 2vw, 15px) clamp(20px, 4vw, 30px);
+            font-family: 'Orbitron', sans-serif;
+            font-size: clamp(0.8rem, 3vw, 1.2rem);
+            cursor: pointer;
+            border-radius: 5px;
+            margin: 10px;
+            min-width: 200px;
+            text-transform: uppercase;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 5px var(--primary-color), 0 0 10px var(--primary-color) inset;
+        }
+
+        .button:hover {
+            background: var(--primary-color);
+            color: var(--background-color);
+            box-shadow: 0 0 20px var(--primary-color), 0 0 30px var(--text-color);
+        }
+        
+        .button:disabled {
+            border-color: #555;
+            color: #555;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        #hud {
+            position: absolute;
+            top: 10px;
+            left: 0;
+            width: 100%;
+            padding: 0 20px;
+            box-sizing: border-box;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: clamp(0.8rem, 3vw, 1.2rem);
+            z-index: 5;
+            pointer-events: none;
+        }
+        
+        .hud-item {
+            background: rgba(0,0,0,0.3);
+            padding: 5px 10px;
+            border-radius: 5px;
+        }
+        
+        .score-value { color: var(--primary-color); }
+        .highscore-value { color: var(--secondary-color); }
+
+        #stats-content, #pause-menu, #game-over-screen, #confirm-modal-content {
+             animation: fadeIn 0.5s ease;
+        }
+        
+        #stats-content p, #confirm-modal-content p {
+            font-size: clamp(1rem, 4vw, 1.2rem);
+            margin: 10px 0 20px 0;
+        }
+        
+        #stats-content span {
+            color: var(--primary-color);
+            font-weight: bold;
+        }
+        
+        #game-over-screen h2 {
+            font-size: clamp(2rem, 8vw, 4rem);
+        }
+        
+        #final-score {
+            font-size: clamp(1.5rem, 6vw, 2.5rem);
+            margin-bottom: 30px;
+        }
+        
+        #new-highscore-msg {
+            color: var(--primary-color);
+            animation: flicker 1s infinite alternate;
+        }
+        
+        #controls-container {
+            width: 100%;
+            padding: 10px 0;
+            display: flex;
+            justify-content: space-evenly;
+            align-items: center;
+            z-index: 6;
+            pointer-events: none;
+        }
+        
+        .d-pad {
+            display: grid;
+            grid-template-areas:
+                ". up ."
+                "left middle right"
+                ". down .";
+            gap: 5px;
+            pointer-events: auto;
+        }
+
+        .d-pad-button {
+            width: clamp(50px, 12vw, 60px);
+            height: clamp(50px, 12vw, 60px);
+            background-color: var(--d-pad-color);
+            border: 2px solid var(--d-pad-shadow);
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: var(--primary-color);
+            font-size: clamp(20px, 5vw, 24px);
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.5);
+            transition: all 0.1s ease;
+        }
+
+        .d-pad-button:active {
+            transform: scale(0.95);
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
+            border-color: var(--primary-color);
+        }
+
+        #d-pad-up { grid-area: up; }
+        #d-pad-down { grid-area: down; }
+        #d-pad-left { grid-area: left; }
+        #d-pad-right { grid-area: right; }
+
+        .action-buttons-container {
+             pointer-events: auto;
+        }
+        
+        .control-button {
+            background: rgba(42, 42, 58, 0.8);
+            border: 1px solid var(--d-pad-shadow);
+            color: var(--primary-color);
+            width: clamp(60px, 15vw, 70px);
+            height: clamp(60px, 15vw, 70px);
+            border-radius: 50%;
+            font-size: clamp(20px, 5vw, 24px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.5);
+        }
+        
+        #difficulty-selector {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .difficulty-button {
+            border: 2px solid transparent;
+            background: var(--d-pad-color);
+            color: var(--text-color);
+            padding: 10px 20px;
+            font-family: 'Orbitron', sans-serif;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .difficulty-button::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: var(--primary-color);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.4s, height 0.4s;
+            z-index: 0;
+        }
+
+        .difficulty-button:hover::before {
+            width: 250px;
+            height: 250px;
+        }
+        
+        .difficulty-button span {
+            position: relative;
+            z-index: 1;
+        }
+
+        .difficulty-button.selected {
+            border-color: var(--primary-color);
+            color: var(--background-color);
+        }
+
+        .difficulty-button.selected::before {
+            width: 250px;
+            height: 250px;
+        }
+
+        #music-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: clamp(20px, 5vw, 24px);
+            cursor: pointer;
+            z-index: 11;
+            background: none;
+            border: none;
+            color: var(--text-color);
+        }
+
+        #stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            width: 100%;
+            max-width: 800px;
+            margin-bottom: 20px;
+        }
+
+        .stats-card {
+            background: var(--d-pad-color);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid var(--d-pad-shadow);
+        }
+
+        .stats-card h3 {
+            color: var(--primary-color);
+            margin-top: 0;
+            text-transform: uppercase;
+        }
+        
+        .stats-card p {
+            margin: 5px 0;
+            font-size: clamp(0.8rem, 2.5vw, 1rem);
+        }
+
+        @keyframes flicker {
+            0%, 100% { text-shadow: 0 0 10px var(--primary-color), 0 0 20px var(--text-color), 0 0 30px var(--secondary-color); color: var(--primary-color); }
+            50% { text-shadow: 0 0 15px var(--primary-color), 0 0 25px var(--text-color), 0 0 40px var(--secondary-color); color: var(--text-color); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-wrapper">
+        <div id="game-container">
+            <!-- Экраны интерфейса -->
+            <div id="main-menu" class="ui-overlay">
+                <h1 class="title">КИБЕР-ЗМЕЙ 3000</h1>
+                <div id="difficulty-selector">
+                    <button class="difficulty-button" data-difficulty="easy"><span>Новичок</span></button>
+                    <button class="difficulty-button selected" data-difficulty="normal"><span>Профи</span></button>
+                    <button class="difficulty-button" data-difficulty="hard"><span>Киберпанк</span></button>
+                </div>
+                <button id="play-button" class="button">Играть</button>
+                <button id="stats-button" class="button">Статистика</button>
+            </div>
+
+            <div id="pause-menu" class="ui-overlay hidden">
+                <h1 class="title" style="font-size: 4rem;">Пауза</h1>
+                <button id="resume-button" class="button">Продолжить</button>
+                <button id="restart-pause-button" class="button">Начать заново</button>
+                <button id="main-menu-pause-button" class="button">Главное меню</button>
+            </div>
+
+            <div id="stats-screen" class="ui-overlay hidden">
+                <div id="stats-content">
+                    <h1 class="title" style="font-size: 3rem;">Статистика</h1>
+                    <div id="stats-grid">
+                        <!-- Карточки статистики будут вставлены здесь -->
+                    </div>
+                    <button id="stats-back-button" class="button">Назад</button>
+                     <button id="reset-stats-button" class="button" style="border-color: var(--obstacle-color); color: var(--obstacle-color);">Сбросить</button>
+                </div>
+            </div>
+            
+            <div id="game-over-screen" class="ui-overlay hidden">
+                <h2>ИГРА ОКОНЧЕНА</h2>
+                <p id="final-score">Счет: <span>0</span></p>
+                <p id="new-highscore-msg" class="hidden">НОВЫЙ РЕКОРД!</p>
+                <button id="play-again-button" class="button">Играть снова</button>
+                <button id="main-menu-gameover-button" class="button">Главное меню</button>
+            </div>
+            
+            <div id="confirm-modal" class="ui-overlay hidden">
+                <div id="confirm-modal-content">
+                    <h2 class="title" style="font-size: 2.5rem;">Подтверждение</h2>
+                    <p id="confirm-modal-message"></p>
+                    <button id="confirm-yes-button" class="button">Да</button>
+                    <button id="confirm-no-button" class="button">Нет</button>
+                </div>
+            </div>
+
+            <!-- Игровой HUD -->
+            <div id="hud" class="hidden">
+               <div class="hud-item">Счет: <span id="score" class="score-value">0</span></div>
+               <div class="hud-item">Рекорд: <span id="highscore" class="highscore-value">0</span></div>
+            </div>
+
+            <!-- Игровое поле -->
+            <canvas id="gameCanvas"></canvas>
+             <button id="music-toggle">🔇</button>
+        </div>
+        
+        <!-- Кнопки управления -->
+        <div id="controls-container" class="hidden">
+            <div class="d-pad">
+                <div id="d-pad-up" class="d-pad-button">▲</div>
+                <div id="d-pad-left" class="d-pad-button">◄</div>
+                <div id="d-pad-right" class="d-pad-button">►</div>
+                <div id="d-pad-down" class="d-pad-button">▼</div>
+            </div>
+            <div class="action-buttons-container">
+                 <button id="pause-button" class="control-button" title="Пауза (P)">❚❚</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- Элементы DOM ---
+            const canvas = document.getElementById('gameCanvas');
+            const ctx = canvas.getContext('2d');
+            const gameContainer = document.getElementById('game-container');
+            const mainMenu = document.getElementById('main-menu');
+            const statsScreen = document.getElementById('stats-screen');
+            const pauseMenu = document.getElementById('pause-menu');
+            const gameOverScreen = document.getElementById('game-over-screen');
+            const confirmModal = document.getElementById('confirm-modal');
+            const hud = document.getElementById('hud');
+            const controlsContainer = document.getElementById('controls-container');
+            const playButton = document.getElementById('play-button');
+            const statsButton = document.getElementById('stats-button');
+            const statsBackButton = document.getElementById('stats-back-button');
+            const resetStatsButton = document.getElementById('reset-stats-button');
+            const resumeButton = document.getElementById('resume-button');
+            const restartPauseButton = document.getElementById('restart-pause-button');
+            const mainMenuPauseButton = document.getElementById('main-menu-pause-button');
+            const playAgainButton = document.getElementById('play-again-button');
+            const mainMenuGameoverButton = document.getElementById('main-menu-gameover-button');
+            const pauseButton = document.getElementById('pause-button');
+            const confirmYesButton = document.getElementById('confirm-yes-button');
+            const confirmNoButton = document.getElementById('confirm-no-button');
+            const dPadUp = document.getElementById('d-pad-up');
+            const dPadDown = document.getElementById('d-pad-down');
+            const dPadLeft = document.getElementById('d-pad-left');
+            const dPadRight = document.getElementById('d-pad-right');
+            const scoreEl = document.getElementById('score');
+            const highscoreEl = document.getElementById('highscore');
+            const finalScoreEl = document.querySelector('#final-score span');
+            const newHighscoreMsg = document.getElementById('new-highscore-msg');
+            const statsGrid = document.getElementById('stats-grid');
+            const confirmModalMessage = document.getElementById('confirm-modal-message');
+            const difficultySelector = document.getElementById('difficulty-selector');
+            const musicToggleButton = document.getElementById('music-toggle');
+
+            // --- Конфигурация игры ---
+            let gridSize; 
+            const tileCountX = 30; 
+            const tileCountY = 30; 
+            let snake, food, obstacles, score, direction, dx, dy, isPaused, isGameOver, animationFrameId;
+            
+            const difficultySettings = {
+                easy:   { speed: 150, obstacles: 0.01 },
+                normal: { speed: 120, obstacles: 0.02 }, // Больше препятствий
+                hard:   { speed: 90,  obstacles: 0.03 }
+            };
+            let currentDifficulty = 'normal';
+            let initialSpeed = difficultySettings[currentDifficulty].speed;
+            let currentSpeed = initialSpeed;
+            let lastUpdateTime = 0;
+            let confirmCallback = null;
+            let audioStarted = false;
+
+            // --- Статистика ---
+            let stats;
+            const defaultStats = () => ({
+                easy: { highscore: 0, gamesPlayed: 0, foodEaten: 0 },
+                normal: { highscore: 0, gamesPlayed: 0, foodEaten: 0 },
+                hard: { highscore: 0, gamesPlayed: 0, foodEaten: 0 }
+            });
+
+            // --- Музыка ---
+            const synth = new Tone.FMSynth({
+                harmonicity: 3,
+                modulationIndex: 10,
+                detune: 0,
+                oscillator: { type: "sine" },
+                envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.5 },
+                modulation: { type: "square" },
+                modulationEnvelope: { attack: 0.5, decay: 0.01, sustain: 1, release: 0.5 }
+            }).toDestination();
+            const reverb = new Tone.Reverb(0.5).toDestination();
+            synth.connect(reverb);
+            
+            const musicPatterns = [
+                ['C2', 'G2', 'C3', 'D3'],
+                ['A#1', 'F2', 'A#2', 'C3'],
+                ['F1', 'C2', 'F2', 'G#2']
+            ];
+            let currentPatternIndex = 0;
+            const musicLoop = new Tone.Sequence((time, note) => {
+                synth.triggerAttackRelease(note, '8n', time);
+            }, musicPatterns[0], '4n');
+            
+            Tone.Transport.scheduleRepeat(time => {
+                currentPatternIndex = (currentPatternIndex + 1) % musicPatterns.length;
+                musicLoop.events = musicPatterns[currentPatternIndex];
+            }, '4m');
+
+
+            // --- Инициализация ---
+            async function init() {
+                await loadStats();
+                setupCanvas();
+                addEventListeners();
+                showScreen('main');
+            }
+            
+            function setupCanvas() {
+                const containerWidth = gameContainer.clientWidth;
+                const containerHeight = gameContainer.clientHeight;
+                const maxCanvasSize = Math.min(containerWidth, containerHeight);
+                gridSize = Math.floor(maxCanvasSize / tileCountX);
+                canvas.width = tileCountX * gridSize;
+                canvas.height = tileCountY * gridSize;
+            }
+
+            // --- Управление экранами ---
+            function showScreen(screenName) {
+                [mainMenu, statsScreen, pauseMenu, gameOverScreen, confirmModal, hud, controlsContainer, canvas].forEach(el => {
+                    if (el) el.classList.add('hidden');
+                });
+
+                switch (screenName) {
+                    case 'main': mainMenu.classList.remove('hidden'); break;
+                    case 'stats': updateStatsDisplay(); statsScreen.classList.remove('hidden'); break;
+                    case 'game': hud.classList.remove('hidden'); controlsContainer.classList.remove('hidden'); canvas.classList.remove('hidden'); break;
+                    case 'pause': pauseMenu.classList.remove('hidden'); break;
+                    case 'gameover': gameOverScreen.classList.remove('hidden'); break;
+                    case 'confirm': confirmModal.classList.remove('hidden'); break;
+                }
+            }
+
+            // --- Игровой процесс ---
+            function startGame() {
+                isGameOver = false;
+                isPaused = false;
+                score = 0;
+                initialSpeed = difficultySettings[currentDifficulty].speed;
+                currentSpeed = initialSpeed;
+                direction = 'right'; dx = 1; dy = 0;
+                snake = [{ x: Math.floor(tileCountX / 4), y: Math.floor(tileCountY / 2) }];
+                generateObstacles();
+                generateFood();
+                updateHud();
+                stats[currentDifficulty].gamesPlayed++;
+                saveStats();
+                showScreen('game');
+                lastUpdateTime = 0;
+                if(animationFrameId) cancelAnimationFrame(animationFrameId);
+                gameLoop(0);
+            }
+            
+            function gameLoop(currentTime) {
+                if (isPaused || isGameOver) return;
+                animationFrameId = requestAnimationFrame(gameLoop);
+                if (lastUpdateTime === 0) lastUpdateTime = currentTime;
+                const deltaTime = currentTime - lastUpdateTime;
+                if (deltaTime > currentSpeed) {
+                    lastUpdateTime = currentTime;
+                    update();
+                    draw();
+                }
+            }
+
+            function update() {
+                const head = { x: snake[0].x + dx, y: snake[0].y + dy };
+                if (head.x < 0 || head.x >= tileCountX || head.y < 0 || head.y >= tileCountY || isCollisionWithSnake(head) || isCollisionWithObstacles(head)) {
+                    gameOver();
+                    return;
+                }
+                snake.unshift(head);
+                if (head.x === food.x && head.y === food.y) {
+                    score++;
+                    stats[currentDifficulty].foodEaten++;
+                    currentSpeed = Math.max(40, currentSpeed - 1.5);
+                    saveStats();
+                    generateFood();
+                } else {
+                    snake.pop();
+                }
+                updateHud();
+            }
+            
+            function gameOver() {
+                isGameOver = true;
+                cancelAnimationFrame(animationFrameId);
+                if (score > stats[currentDifficulty].highscore) {
+                    stats[currentDifficulty].highscore = score;
+                    newHighscoreMsg.classList.remove('hidden');
+                } else {
+                    newHighscoreMsg.classList.add('hidden');
+                }
+                finalScoreEl.textContent = score;
+                saveStats();
+                showScreen('gameover');
+            }
+
+            function pauseGame() { if (!isGameOver) { isPaused = true; showScreen('pause'); } }
+            function resumeGame() { isPaused = false; showScreen('game'); lastUpdateTime = 0; gameLoop(performance.now()); }
+
+            // --- Генерация объектов ---
+            function generateFood() {
+                do { food = { x: Math.floor(Math.random() * tileCountX), y: Math.floor(Math.random() * tileCountY) }; }
+                while (isCollisionWithSnake(food) || isCollisionWithObstacles(food));
+            }
+            
+            function generateObstacles() {
+                obstacles = [];
+                const obstaclePercentage = difficultySettings[currentDifficulty].obstacles;
+                const obstacleCount = Math.floor(tileCountX * tileCountY * obstaclePercentage);
+                for(let i = 0; i < obstacleCount; i++) {
+                    let obstacle;
+                     do { obstacle = { x: Math.floor(Math.random() * tileCountX), y: Math.floor(Math.random() * tileCountY) }; }
+                     while (isCollisionWithSnake(obstacle) || (food && obstacle.x === food.x && obstacle.y === food.y) || Math.abs(obstacle.x - snake[0].x) < 5);
+                    obstacles.push(obstacle);
+                }
+            }
+
+            // --- Проверки столкновений ---
+            function isCollisionWithSnake(pos) { return snake.some(segment => segment.x === pos.x && segment.y === pos.y); }
+            function isCollisionWithObstacles(pos) { return obstacles && obstacles.some(obstacle => obstacle.x === pos.x && obstacle.y === pos.y); }
+
+            // --- Отрисовка ---
+            function draw() {
+                ctx.fillStyle = 'rgba(10, 10, 26, 0.8)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                drawGrid();
+                obstacles.forEach(obstacle => drawRect(obstacle.x, obstacle.y, 'obstacle-color'));
+                drawRect(food.x, food.y, 'food-color', true);
+                snake.forEach((segment, index) => drawRect(segment.x, segment.y, index === 0 ? 'snake-head-color' : 'snake-body-color', index === 0));
+            }
+            
+            function drawGrid() {
+                 ctx.strokeStyle = getCssVar('--grid-color');
+                 ctx.lineWidth = 1;
+                 for (let x = 0; x <= canvas.width; x += gridSize) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke(); }
+                 for (let y = 0; y <= canvas.height; y += gridSize) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke(); }
+            }
+
+            function drawRect(x, y, colorVar, hasGlow = false) {
+                ctx.fillStyle = getCssVar(`--${colorVar}`);
+                if (hasGlow) { ctx.shadowColor = getCssVar(`--${colorVar}`); ctx.shadowBlur = 15; }
+                ctx.fillRect(x * gridSize, y * gridSize, gridSize, gridSize);
+                ctx.shadowBlur = 0;
+            }
+            
+            // --- Управление ---
+            function changeDirection(newDx, newDy) {
+                if (isPaused || isGameOver || (dx === -newDx && dy === -newDy)) return;
+                dx = newDx; dy = newDy;
+            }
+
+            function handleKeyDown(e) {
+                const key = e.key.toLowerCase();
+                if(key === 'p') { isPaused ? resumeGame() : pauseGame(); return; }
+                switch (key) {
+                    case 'arrowup': case 'w': changeDirection(0, -1); break;
+                    case 'arrowdown': case 's': changeDirection(0, 1); break;
+                    case 'arrowleft': case 'a': changeDirection(-1, 0); break;
+                    case 'arrowright': case 'd': changeDirection(1, 0); break;
+                }
+            }
+
+            // --- UI и Статистика ---
+            function updateHud() { 
+                scoreEl.textContent = score; 
+                highscoreEl.textContent = stats[currentDifficulty].highscore;
+            }
+            function updateStatsDisplay() {
+                statsGrid.innerHTML = '';
+                const difficultyNames = { easy: 'Новичок', normal: 'Профи', hard: 'Киберпанк' };
+                for (const diff in stats) {
+                    const card = document.createElement('div');
+                    card.className = 'stats-card';
+                    card.innerHTML = `
+                        <h3>${difficultyNames[diff]}</h3>
+                        <p>Рекорд: <span>${stats[diff].highscore}</span></p>
+                        <p>Игр сыграно: <span>${stats[diff].gamesPlayed}</span></p>
+                        <p>Еды съедено: <span>${stats[diff].foodEaten}</span></p>
+                    `;
+                    statsGrid.appendChild(card);
+                }
+            }
+            async function saveStats() { 
+                try { localStorage.setItem('cyberSnake3000_stats', JSON.stringify(stats)); }
+                catch (e) { console.error("Не удалось сохранить статистику.", e); }
+            }
+            async function loadStats() {
+                try {
+                    const data = JSON.parse(localStorage.getItem('cyberSnake3000_stats'));
+                    stats = data ? data : defaultStats();
+                } catch (e) { 
+                    stats = defaultStats();
+                    console.error("Не удалось загрузить статистику.", e); 
+                }
+            }
+            function resetAllStats() {
+                showConfirmModal("Вы уверены, что хотите сбросить всю статистику? Это действие необратимо.", () => {
+                    stats = defaultStats();
+                    saveStats();
+                    updateStatsDisplay();
+                    showScreen('stats');
+                });
+            }
+            function showConfirmModal(message, onConfirm) {
+                confirmModalMessage.textContent = message;
+                confirmCallback = onConfirm;
+                showScreen('confirm');
+            }
+            function getCssVar(varName) { return getComputedStyle(document.documentElement).getPropertyValue(varName).trim(); }
+
+            // --- Обработчики событий ---
+            function addEventListeners() {
+                window.addEventListener('resize', setupCanvas);
+                document.addEventListener('keydown', handleKeyDown);
+                document.addEventListener('contextmenu', e => e.preventDefault());
+
+                playButton.addEventListener('click', async () => {
+                    if (!audioStarted) {
+                        try {
+                           await Tone.start();
+                           audioStarted = true;
+                        } catch(e) { console.error('Could not start audio context', e); }
+                    }
+                    startGame();
+                });
+
+                statsButton.addEventListener('click', () => showScreen('stats'));
+                statsBackButton.addEventListener('click', () => showScreen('main'));
+                resetStatsButton.addEventListener('click', resetAllStats);
+                resumeButton.addEventListener('click', resumeGame);
+                restartPauseButton.addEventListener('click', startGame);
+                mainMenuPauseButton.addEventListener('click', () => showScreen('main'));
+                playAgainButton.addEventListener('click', startGame);
+                mainMenuGameoverButton.addEventListener('click', () => showScreen('main'));
+                pauseButton.addEventListener('click', () => { isPaused ? resumeGame() : pauseGame(); });
+                confirmYesButton.addEventListener('click', () => { if (confirmCallback) confirmCallback(); });
+                confirmNoButton.addEventListener('click', () => showScreen('stats'));
+                
+                dPadUp.addEventListener('click', () => changeDirection(0, -1));
+                dPadDown.addEventListener('click', () => changeDirection(0, 1));
+                dPadLeft.addEventListener('click', () => changeDirection(-1, 0));
+                dPadRight.addEventListener('click', () => changeDirection(1, 0));
+
+                difficultySelector.addEventListener('click', (e) => {
+                    const button = e.target.closest('.difficulty-button');
+                    if (button) {
+                        currentDifficulty = button.dataset.difficulty;
+                        document.querySelectorAll('.difficulty-button').forEach(btn => btn.classList.remove('selected'));
+                        button.classList.add('selected');
+                    }
+                });
+
+                musicToggleButton.addEventListener('click', async () => {
+                    if (!audioStarted) {
+                        await Tone.start();
+                        audioStarted = true;
+                    }
+                    if (Tone.Transport.state === 'started') {
+                        Tone.Transport.stop();
+                        musicLoop.stop();
+                        musicToggleButton.textContent = '🔇';
+                    } else {
+                        Tone.Transport.start();
+                        musicLoop.start(0);
+                        musicToggleButton.textContent = '🎵';
+                    }
+                });
+            }
+
+            // --- Запуск ---
+            init();
+        });
+    </script>
+</body>
+</html>
