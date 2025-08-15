@@ -23,7 +23,7 @@
             --border-color-dark: #4a4a68;
             --shadow-color: rgba(0, 0, 0, 0.1);
             --font-family: 'Montserrat', sans-serif;
-            --banner-height: 0px; /* Высота баннера будет установлена через JS */
+            --banner-height: 0px; /* Динамическая высота для баннера */
         }
 
         html, body {
@@ -74,7 +74,6 @@
             align-items: center;
             overflow: hidden;
             width: 100%;
-            min-height: 0;
         }
 
         #menu, #game {
@@ -94,11 +93,14 @@
             align-items: center;
             opacity: 1;
             transform: scale(1);
+        }
+        
+        #game.active {
             height: 100%;
         }
 
         h1 {
-            font-size: clamp(2rem, 7vh, 3rem);
+            font-size: clamp(2.2rem, 7vw, 3rem);
             font-weight: 700;
             color: var(--primary-color);
             margin-bottom: 1.5rem;
@@ -112,9 +114,9 @@
         /* --- Buttons --- */
         .btn {
             font-family: var(--font-family);
-            font-size: clamp(0.8rem, 2.5vw, 1rem);
+            font-size: clamp(0.9rem, 2.5vw, 1rem);
             font-weight: 600;
-            padding: clamp(8px, 2vh, 12px) 20px;
+            padding: 12px 20px;
             border-radius: 12px;
             border: none;
             cursor: pointer;
@@ -122,7 +124,7 @@
             box-shadow: 0 4px 6px var(--shadow-color), 0 1px 3px var(--shadow-color);
             background-color: var(--surface-color-light);
             color: var(--primary-color);
-            margin: clamp(4px, 1vh, 6px) 0;
+            margin: 6px 0;
             width: 80%;
             max-width: 300px;
         }
@@ -143,35 +145,17 @@
             box-shadow: 0 4px 6px rgba(0,0,0,0.2), 0 1px 3px rgba(0,0,0,0.2);
         }
 
-        /* --- Game Layout Wrappers --- */
-        #game-main-area {
-            display: flex;
-            flex-direction: column;
-            width: 100%;
-            flex-grow: 1;
-            min-height: 0;
-            align-items: center;
-            justify-content: center;
-        }
-
-        #game-side-controls {
-            width: 100%;
-        }
-
         /* --- Sudoku Board --- */
         #sudoku-board {
             border: 3px solid var(--primary-color);
             border-radius: 12px;
             overflow: hidden;
             box-shadow: 0 8px 16px var(--shadow-color);
-            margin: clamp(5px, 2vh, 15px) auto;
+            margin: 15px auto;
             background-color: var(--surface-color-light);
             width: 100%;
-            /* The board will be a square that fits its container */
+            max-width: 500px;
             aspect-ratio: 1 / 1;
-            flex-shrink: 1;
-            min-height: 0;
-            max-width: 100%;
         }
         
         body.dark #sudoku-board {
@@ -190,7 +174,7 @@
             height: 11.11%;
             text-align: center;
             border: 1px solid var(--border-color-light);
-            font-size: clamp(0.8rem, 4vmin, 1.5rem);
+            font-size: clamp(0.9rem, 4vw, 1.5rem);
             cursor: pointer;
             transition: background-color 0.2s;
             font-weight: 600;
@@ -213,13 +197,6 @@
             border-right-color: var(--border-color-dark);
         }
 
-        .initial-number {
-            color: #586069;
-            font-weight: 700;
-        }
-        body.dark .initial-number {
-            color: #c9d1d9;
-        }
 
         .player-number { color: var(--primary-color); }
         body.dark .player-number { color: #a7c7fa; }
@@ -248,17 +225,16 @@
             align-items: center;
             width: 100%;
             margin-bottom: 10px;
-            flex-shrink: 0;
         }
         .icon-btn {
             background: var(--surface-color-light);
             border: none;
-            font-size: clamp(1rem, 3vmin, 1.5rem);
+            font-size: clamp(1.2rem, 3vw, 1.5rem);
             cursor: pointer;
             color: var(--text-color-light);
             transition: all 0.2s;
-            width: clamp(36px, 8vw, 44px);
-            height: clamp(36px, 8vw, 44px);
+            width: clamp(38px, 8vw, 44px);
+            height: clamp(38px, 8vw, 44px);
             border-radius: 50%;
             display: flex;
             justify-content: center;
@@ -285,7 +261,7 @@
              padding: 8px 12px;
              border-radius: 8px;
              box-shadow: 0 2px 4px var(--shadow-color);
-             font-size: clamp(0.7rem, 2.5vmin, 0.9rem);
+             font-size: clamp(0.7rem, 2vw, 0.9rem);
         }
         body.dark #lives, body.dark #difficulty, body.dark #time {
             background-color: var(--surface-color-dark);
@@ -294,13 +270,13 @@
         #number-buttons {
             display: grid;
             grid-template-columns: repeat(5, 1fr);
-            gap: clamp(5px, 2vw, 10px);
-            margin: clamp(5px, 2vh, 15px) 0;
+            gap: clamp(6px, 2vw, 10px);
+            margin: 15px 0;
         }
         .number-btn {
             width: 100%;
             aspect-ratio: 1 / 1;
-            font-size: clamp(1rem, 4vmin, 1.5rem);
+            font-size: clamp(1.2rem, 4vw, 1.5rem);
             font-weight: 600;
             color: var(--primary-color);
             background-color: var(--surface-color-light);
@@ -353,56 +329,115 @@
         body.dark .modal-content {
             background-color: var(--surface-color-dark);
         }
-        
-        /* --- Responsive Adjustments --- */
-        
-        /* For very short screens (e.g., small phones in portrait) */
-        @media (max-height: 650px) {
-            h1 { margin-bottom: 1rem; }
-            .btn { padding: 10px; margin: 4px 0; }
-            #sudoku-board { margin: 5px auto; }
-            #number-buttons { margin: 5px 0; }
+        .modal h2 {
+            margin-top: 0;
+            color: var(--primary-color);
+            font-size: 1.8rem;
         }
+        body.dark .modal h2 { color: #a7c7fa; }
+        .modal p { font-size: 1.1rem; margin-bottom: 1.5rem; }
+        .modal-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideIn { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
-        /* For landscape mode on phones */
-        @media (orientation: landscape) and (max-height: 500px) {
-            #app-container {
-                padding: 0.5rem;
-                padding-bottom: calc(var(--banner-height) + 0.5rem);
-            }
-            #game-main-area {
-                flex-direction: row;
-                align-items: center;
-                gap: 15px;
-            }
-            #sudoku-board {
-                width: auto;
-                height: 100%;
-                margin: auto 0;
-            }
-            #game-side-controls {
-                display: flex;
-                flex-direction: column;
-                justify-content: center;
-                align-items: center;
-                flex-grow: 1;
-                height: 100%;
-            }
-            #number-buttons {
-                grid-template-columns: repeat(3, 1fr);
-                gap: 5px;
-                margin: 0;
-                width: 100%;
-                max-width: 180px;
-            }
-            #hint-btn {
-                width: 100%;
-                max-width: 180px;
-                margin-top: 10px;
-                padding: 8px;
+        /* Rules Modal */
+        #rules-modal ul {
+            list-style: none;
+            padding: 0;
+            text-align: left;
+        }
+        #rules-modal li {
+            padding: 10px;
+            border-bottom: 1px solid var(--border-color-light);
+            opacity: 0;
+            transform: translateX(-20px);
+            animation: rule-appear 0.5s forwards;
+        }
+        #rules-modal li:last-child { border-bottom: none; }
+        body.dark #rules-modal li { border-color: var(--border-color-dark); }
+        
+        @keyframes rule-appear {
+            to {
+                opacity: 1;
+                transform: translateX(0);
             }
         }
+        #rules-modal li:nth-child(1) { animation-delay: 0.2s; }
+        #rules-modal li:nth-child(2) { animation-delay: 0.4s; }
+        #rules-modal li:nth-child(3) { animation-delay: 0.6s; }
+        #rules-modal li:nth-child(4) { animation-delay: 0.8s; }
 
+        /* Stats Modal */
+        #stats-container {
+            text-align: left;
+            max-height: 50vh;
+            overflow-y: auto;
+            padding-right: 15px;
+        }
+        .stats-level {
+            margin-bottom: 1rem;
+            background-color: rgba(74, 144, 226, 0.05);
+            padding: 15px;
+            border-radius: 10px;
+        }
+        body.dark .stats-level {
+            background-color: rgba(167, 199, 250, 0.1);
+        }
+        .stats-level h3 {
+            margin: 0 0 0.5rem 0;
+            color: var(--primary-color);
+            font-size: 1.2rem;
+        }
+        body.dark .stats-level h3 { color: #a7c7fa; }
+        .stats-level p {
+            margin: 4px 0;
+            font-size: 1rem;
+        }
+
+        /* --- Theme Switch --- */
+        .theme-switcher-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            margin-top: 20px;
+        }
+        .theme-switcher-container span {
+            font-size: 1.5rem;
+        }
+        .theme-switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+        .theme-switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px; width: 26px;
+            left: 4px; bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider { background-color: var(--primary-color); }
+        input:checked + .slider:before { transform: translateX(26px); }
+        
         #banner-ad-container {
             width: 100%;
             position: fixed;
@@ -410,6 +445,7 @@
             left: 0;
             z-index: 2000;
         }
+
     </style>
 </head>
 
@@ -447,21 +483,17 @@
                     </div>
                     <button id="pause-btn" class="icon-btn" onclick="togglePause()">⏸️</button>
                 </div>
-                <div id="game-main-area">
-                    <table id="sudoku-board"></table>
-                    <div id="game-side-controls">
-                        <div id="number-buttons">
-                            <!-- Numbers will be generated by JS -->
-                        </div>
-                        <button id="hint-btn" class="btn" onclick="giveHint()">Подсказка 💡</button>
-                    </div>
+                <table id="sudoku-board"></table>
+                <div id="number-buttons">
+                    <!-- Numbers will be generated by JS -->
                 </div>
+                <button id="hint-btn" class="btn" onclick="giveHint()">Подсказка 💡</button>
             </div>
         </div>
         <div id="banner-ad-container"></div>
     </div>
 
-    <!-- Modals (unchanged) -->
+    <!-- Modals -->
     <div id="game-over-modal" class="modal">
         <div class="modal-content">
             <h2>Вы проиграли</h2>
@@ -472,6 +504,7 @@
             </div>
         </div>
     </div>
+    
     <div id="win-modal" class="modal">
         <div class="modal-content">
             <h2>Поздравляем!</h2>
@@ -482,6 +515,7 @@
             </div>
         </div>
     </div>
+
     <div id="pause-modal" class="modal">
         <div class="modal-content">
             <h2>Пауза</h2>
@@ -493,12 +527,20 @@
             </div>
         </div>
     </div>
+
     <div id="rules-modal" class="modal">
         <div class="modal-content">
             <h2>Правила Судоку</h2>
-            <!-- Rules content unchanged -->
+            <ul>
+                <li>✔️ Заполните пустые клетки цифрами от 1 до 9.</li>
+                <li>✔️ В каждой строке цифры не должны повторяться.</li>
+                <li>✔️ В каждом столбце цифры не должны повторяться.</li>
+                <li>✔️ В каждом малом квадрате 3x3 цифры не должны повторяться.</li>
+            </ul>
+            <button class="btn" onclick="hideRules()">Понятно</button>
         </div>
     </div>
+
     <div id="stats-modal" class="modal">
         <div class="modal-content">
             <h2>Статистика</h2>
@@ -569,7 +611,7 @@
 
         // --- Initialization ---
         initStats();
-        setupBannerObserver();
+        setupBannerObserver(); // Отслеживаем размер баннера
         generateNumberButtons();
         showMenu(); // Show menu on start
 
@@ -650,8 +692,8 @@
                     if (grid[i][j] === null) {
                         cell.addEventListener('click', () => selectCell(cell));
                     } else {
-                        // Use a class for styling initial numbers for better theme switching
-                        cell.classList.add('initial-number');
+                        cell.style.color = bodyEl.classList.contains('dark') ? '#c9d1d9' : '#586069';
+                        cell.style.fontWeight = '700';
                     }
                     row.appendChild(cell);
                 }
@@ -853,7 +895,9 @@
         // --- Theme ---
         function toggleTheme() {
             bodyEl.classList.toggle('dark');
-            // No redraw needed due to CSS class implementation for initial numbers
+            if (currentLevel) {
+                 drawGrid(boardEl, initialNumbers);
+            }
         }
 
         // --- Rules & Stats Modals ---
@@ -866,7 +910,9 @@
         async function showBannerAd() {
             if (window.vkBridge && vkBridge.supports('VKWebAppShowBannerAd')) {
                 try {
-                    const adData = await vkBridge.send('VKWebAppShowBannerAd', { banner_location: 'bottom' });
+                    const adData = await vkBridge.send('VKWebAppShowBannerAd', {
+                        banner_location: 'bottom'
+                    });
                     if (!adData.result) {
                         console.log('Banner ad not shown');
                         document.documentElement.style.setProperty('--banner-height', '0px');
@@ -889,10 +935,92 @@
         }
 
         // --- Statistics Logic (VK Storage) ---
-        // (This section remains unchanged)
-        async function initStats() { /* ... */ }
-        async function updateStats(level, time, won) { /* ... */ }
-        async function displayStats() { /* ... */ }
+        async function initStats() {
+            if (!window.vkBridge) return;
+            try {
+                const data = await vkBridge.send('VKWebAppStorageGet', { keys: ['sudokuStats'] });
+                const statsValue = data.keys[0].value;
+                if (!statsValue || statsValue === "") {
+                    const initialStats = {};
+                    Object.keys(difficultyLevels).forEach(level => {
+                        initialStats[level] = { games: 0, wins: 0, bestTime: null };
+                    });
+                    await vkBridge.send('VKWebAppStorageSet', {
+                        key: 'sudokuStats',
+                        value: JSON.stringify(initialStats)
+                    });
+                }
+            } catch (e) {
+                console.error("VK Storage init error: ", e);
+            }
+        }
+
+        async function updateStats(level, time, won) {
+            if (!window.vkBridge || !level) return;
+            try {
+                const data = await vkBridge.send('VKWebAppStorageGet', { keys: ['sudokuStats'] });
+                const statsValue = data.keys[0].value;
+                let stats = statsValue ? JSON.parse(statsValue) : {};
+
+                if (!stats[level]) {
+                    stats[level] = { games: 0, wins: 0, bestTime: null };
+                }
+
+                stats[level].games++;
+                if (won) {
+                    stats[level].wins++;
+                    if (stats[level].bestTime === null || time < stats[level].bestTime) {
+                        stats[level].bestTime = time;
+                    }
+                }
+                await vkBridge.send('VKWebAppStorageSet', {
+                    key: 'sudokuStats',
+                    value: JSON.stringify(stats)
+                });
+            } catch (e) {
+                console.error("VK Storage update error: ", e);
+            }
+        }
+
+        async function displayStats() {
+            if (!window.vkBridge) {
+                document.getElementById('stats-container').innerHTML = "<p>Статистика доступна только в приложении VK.</p>";
+                return;
+            }
+            try {
+                const data = await vkBridge.send('VKWebAppStorageGet', { keys: ['sudokuStats'] });
+                const statsValue = data.keys[0].value;
+                const container = document.getElementById('stats-container');
+                container.innerHTML = '';
+                
+                if (!statsValue) {
+                    container.innerHTML = "<p>Вы еще не играли ни одной игры.</p>";
+                    return;
+                }
+
+                const stats = JSON.parse(statsValue);
+
+                Object.keys(difficultyNames).forEach(level => {
+                    const levelStats = stats[level] || { games: 0, wins: 0, bestTime: null };
+                    const bestTime = levelStats.bestTime !== null 
+                        ? `${String(Math.floor(levelStats.bestTime / 60)).padStart(2, '0')}:${String(levelStats.bestTime % 60).padStart(2, '0')}`
+                        : 'Нет';
+
+                    const levelDiv = document.createElement('div');
+                    levelDiv.className = 'stats-level';
+                    levelDiv.innerHTML = `
+                        <h3>${difficultyNames[level]}</h3>
+                        <p><strong>Сыграно игр:</strong> ${levelStats.games}</p>
+                        <p><strong>Побед:</strong> ${levelStats.wins}</p>
+                        <p><strong>Лучшее время:</strong> ${bestTime}</p>
+                    `;
+                    container.appendChild(levelDiv);
+                });
+            } catch (e) {
+                console.error("VK Storage display error: ", e);
+                document.getElementById('stats-container').innerHTML = "<p>Ошибка при загрузке статистики.</p>";
+            }
+        }
         
         // Make functions globally accessible for onclick attributes
         window.startGame = startGame;
