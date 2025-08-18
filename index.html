@@ -94,11 +94,9 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // --- Проверка на наличие vkBridge и его инициализация ---
-            const isVkEnv = typeof vkBridge !== 'undefined';
-            if (isVkEnv) {
-                vkBridge.send('VKWebAppInit');
-            }
+            // --- Безусловная инициализация VK Bridge ---
+            // Эта команда должна выполняться всегда для VK Mini Apps
+            vkBridge.send('VKWebAppInit');
 
             // --- Элементы DOM ---
             const stardustCounter = document.getElementById('stardust-counter');
@@ -111,7 +109,7 @@
             };
 
             const STARDUST_PER_CLICK = 1;
-            const SAVE_KEY = 'cosmicForgeSaveData'; // Ключ для хранения
+            const SAVE_KEY = 'cosmicForgeSaveData'; // Ключ для хранения в VK Storage
 
             // --- Форматирование чисел ---
             const formatNumber = (num) => {
@@ -152,41 +150,29 @@
                 }, 1000);
             });
             
-            // --- Сохранение и загрузка ---
+            // --- Сохранение и загрузка через VK Bridge ---
             const saveGame = () => {
                 const data = JSON.stringify(gameState);
-                if (isVkEnv) {
-                    vkBridge.send('VKWebAppStorageSet', { 
-                        key: SAVE_KEY, 
-                        value: data 
-                    }).catch(error => {
-                        console.error("Ошибка сохранения в VK Storage:", error);
-                    });
-                } else {
-                    localStorage.setItem(SAVE_KEY, data);
-                }
+                vkBridge.send('VKWebAppStorageSet', { 
+                    key: SAVE_KEY, 
+                    value: data 
+                }).catch(error => {
+                    // В рабочей среде VK ошибки можно логировать или обрабатывать
+                    console.error("Ошибка сохранения в VK Storage:", error);
+                });
             };
 
             const loadGame = async () => {
                 try {
-                    let savedState = null;
-                    if (isVkEnv) {
-                        const receivedData = await vkBridge.send('VKWebAppStorageGet', { keys: [SAVE_KEY] });
-                        if (receivedData.keys[0].value) {
-                            savedState = JSON.parse(receivedData.keys[0].value);
+                    const receivedData = await vkBridge.send('VKWebAppStorageGet', { keys: [SAVE_KEY] });
+                    if (receivedData.keys && receivedData.keys[0] && receivedData.keys[0].value) {
+                        const savedState = JSON.parse(receivedData.keys[0].value);
+                        if (savedState && typeof savedState.stardust === 'number') {
+                           gameState = savedState;
                         }
-                    } else {
-                        const localData = localStorage.getItem(SAVE_KEY);
-                        if (localData) {
-                            savedState = JSON.parse(localData);
-                        }
-                    }
-
-                    if (savedState && typeof savedState.stardust === 'number') {
-                       gameState = savedState;
                     }
                 } catch (error) {
-                    console.error("Ошибка загрузки:", error);
+                    console.error("Ошибка загрузки из VK Storage:", error);
                 } finally {
                     updateUI();
                 }
