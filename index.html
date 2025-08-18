@@ -53,6 +53,10 @@
             50% { transform: scale(1.5); opacity: 0.8; }
             100% { transform: scale(1); opacity: 1; }
         }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
 
         .star-dust {
             position: absolute;
@@ -70,12 +74,27 @@
         #proto-star {
             animation: pulse 5s infinite ease-in-out;
         }
+        
+        .loader {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(255, 255, 255, 0.2);
+            border-top-color: #8e2de2;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
     </style>
 </head>
 <body oncontextmenu="return false;">
 
-    <!-- Основной контейнер игры -->
-    <div id="game-container" class="w-full h-full max-w-7xl max-h-[1200px] mx-auto flex flex-col p-4 sm:p-8 gap-8 items-center justify-center">
+    <!-- Экран загрузки -->
+    <div id="loader-overlay" class="absolute inset-0 bg-black/80 flex flex-col justify-center items-center z-50">
+        <div class="loader"></div>
+        <p class="mt-4 text-lg text-cyan-300">Синхронизация с VK...</p>
+    </div>
+
+    <!-- Основной контейнер игры (изначально скрыт) -->
+    <div id="game-container" class="w-full h-full max-w-7xl max-h-[1200px] mx-auto flex flex-col p-4 sm:p-8 gap-8 items-center justify-center opacity-0 transition-opacity duration-500">
 
         <!-- Статистика -->
         <div class="w-full max-w-md text-center bg-black/30 p-4 sm:p-6 rounded-xl border border-purple-700/50 shadow-lg">
@@ -94,11 +113,9 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // --- Безусловная инициализация VK Bridge ---
-            // Эта команда должна выполняться всегда для VK Mini Apps
-            vkBridge.send('VKWebAppInit');
-
             // --- Элементы DOM ---
+            const loaderOverlay = document.getElementById('loader-overlay');
+            const gameContainer = document.getElementById('game-container');
             const stardustCounter = document.getElementById('stardust-counter');
             const protoStar = document.getElementById('proto-star');
             const clickArea = document.getElementById('click-area');
@@ -157,7 +174,6 @@
                     key: SAVE_KEY, 
                     value: data 
                 }).catch(error => {
-                    // В рабочей среде VK ошибки можно логировать или обрабатывать
                     console.error("Ошибка сохранения в VK Storage:", error);
                 });
             };
@@ -173,15 +189,30 @@
                     }
                 } catch (error) {
                     console.error("Ошибка загрузки из VK Storage:", error);
-                } finally {
-                    updateUI();
                 }
             };
 
             // --- Инициализация игры ---
             const initGame = async () => {
-                await loadGame();
-                setInterval(saveGame, 5000); // Сохранение каждые 5 секунд
+                try {
+                    // 1. Ждем успешной инициализации VK Bridge
+                    await vkBridge.send('VKWebAppInit');
+                    
+                    // 2. После инициализации загружаем данные
+                    await loadGame();
+                    
+                    // 3. Устанавливаем периодическое сохранение
+                    setInterval(saveGame, 5000);
+                } catch (error) {
+                    console.error("Критическая ошибка инициализации VK Bridge:", error);
+                    // Можно показать сообщение об ошибке пользователю
+                    loaderOverlay.innerHTML = '<p class="text-red-500">Не удалось подключиться к VK</p>';
+                } finally {
+                    // 4. Обновляем UI и показываем игру в любом случае
+                    updateUI();
+                    loaderOverlay.style.display = 'none';
+                    gameContainer.style.opacity = '1';
+                }
             };
 
             initGame();
