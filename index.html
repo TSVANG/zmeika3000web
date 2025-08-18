@@ -90,7 +90,7 @@
     <!-- Экран загрузки -->
     <div id="loader-overlay" class="absolute inset-0 bg-black/80 flex flex-col justify-center items-center z-50">
         <div class="loader"></div>
-        <p class="mt-4 text-lg text-cyan-300">Синхронизация с VK...</p>
+        <p id="loader-text" class="mt-4 text-lg text-cyan-300">Ожидание VK Bridge...</p>
     </div>
 
     <!-- Основной контейнер игры (изначально скрыт) -->
@@ -113,109 +113,120 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // --- Элементы DOM ---
             const loaderOverlay = document.getElementById('loader-overlay');
-            const gameContainer = document.getElementById('game-container');
-            const stardustCounter = document.getElementById('stardust-counter');
-            const protoStar = document.getElementById('proto-star');
-            const clickArea = document.getElementById('click-area');
-
-            // --- Игровое состояние ---
-            let gameState = {
-                stardust: 0,
-            };
-
-            const STARDUST_PER_CLICK = 1;
-            const SAVE_KEY = 'cosmicForgeSaveData'; // Ключ для хранения в VK Storage
-
-            // --- Форматирование чисел ---
-            const formatNumber = (num) => {
-                if (num < 1000) return num.toFixed(0);
-                const suffixes = ["", "K", "M", "B", "T", "Qa", "Qi"];
-                const i = Math.floor(Math.log10(num) / 3);
-                const value = (num / Math.pow(1000, i));
-                return value.toFixed(i > 0 ? 2 : 0) + suffixes[i];
-            };
-
-            // --- Обновление UI ---
-            const updateUI = () => {
-                stardustCounter.textContent = formatNumber(gameState.stardust);
-                stardustCounter.classList.add('number-pop-animation');
-                stardustCounter.onanimationend = () => stardustCounter.classList.remove('number-pop-animation');
-            };
-
-            // --- Клик по звезде ---
-            protoStar.addEventListener('mousedown', (e) => {
-                gameState.stardust += STARDUST_PER_CLICK;
-                updateUI();
-
-                // Создание визуального эффекта "+1"
-                const dust = document.createElement('div');
-                dust.className = 'star-dust';
-                dust.textContent = `+${STARDUST_PER_CLICK}`;
-                
-                const rect = clickArea.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
-
-                dust.style.left = `${x}px`;
-                dust.style.top = `${y}px`;
-                clickArea.appendChild(dust);
-
-                setTimeout(() => {
-                    dust.remove();
-                }, 1000);
-            });
+            const loaderText = document.getElementById('loader-text');
             
-            // --- Сохранение и загрузка через VK Bridge ---
-            const saveGame = () => {
-                const data = JSON.stringify(gameState);
-                vkBridge.send('VKWebAppStorageSet', { 
-                    key: SAVE_KEY, 
-                    value: data 
-                }).catch(error => {
-                    console.error("Ошибка сохранения в VK Storage:", error);
-                });
-            };
+            let attempts = 0;
+            const maxAttempts = 50; // 5 секунд (50 * 100ms)
 
-            const loadGame = async () => {
-                try {
-                    const receivedData = await vkBridge.send('VKWebAppStorageGet', { keys: [SAVE_KEY] });
-                    if (receivedData.keys && receivedData.keys[0] && receivedData.keys[0].value) {
-                        const savedState = JSON.parse(receivedData.keys[0].value);
-                        if (savedState && typeof savedState.stardust === 'number') {
-                           gameState = savedState;
-                        }
-                    }
-                } catch (error) {
-                    console.error("Ошибка загрузки из VK Storage:", error);
-                }
-            };
+            function runGame() {
+                // --- Элементы DOM ---
+                const gameContainer = document.getElementById('game-container');
+                const stardustCounter = document.getElementById('stardust-counter');
+                const protoStar = document.getElementById('proto-star');
+                const clickArea = document.getElementById('click-area');
 
-            // --- Инициализация игры ---
-            const initGame = async () => {
-                try {
-                    // 1. Ждем успешной инициализации VK Bridge
-                    await vkBridge.send('VKWebAppInit');
-                    
-                    // 2. После инициализации загружаем данные
-                    await loadGame();
-                    
-                    // 3. Устанавливаем периодическое сохранение
-                    setInterval(saveGame, 5000);
-                } catch (error) {
-                    console.error("Критическая ошибка инициализации VK Bridge:", error);
-                    // Можно показать сообщение об ошибке пользователю
-                    loaderOverlay.innerHTML = '<p class="text-red-500">Не удалось подключиться к VK</p>';
-                } finally {
-                    // 4. Обновляем UI и показываем игру в любом случае
+                // --- Игровое состояние ---
+                let gameState = {
+                    stardust: 0,
+                };
+
+                const STARDUST_PER_CLICK = 1;
+                const SAVE_KEY = 'cosmicForgeSaveData';
+
+                // --- Форматирование чисел ---
+                const formatNumber = (num) => {
+                    if (num < 1000) return num.toFixed(0);
+                    const suffixes = ["", "K", "M", "B", "T", "Qa", "Qi"];
+                    const i = Math.floor(Math.log10(num) / 3);
+                    const value = (num / Math.pow(1000, i));
+                    return value.toFixed(i > 0 ? 2 : 0) + suffixes[i];
+                };
+
+                // --- Обновление UI ---
+                const updateUI = () => {
+                    stardustCounter.textContent = formatNumber(gameState.stardust);
+                    stardustCounter.classList.add('number-pop-animation');
+                    stardustCounter.onanimationend = () => stardustCounter.classList.remove('number-pop-animation');
+                };
+
+                // --- Клик по звезде ---
+                protoStar.addEventListener('mousedown', (e) => {
+                    gameState.stardust += STARDUST_PER_CLICK;
                     updateUI();
-                    loaderOverlay.style.display = 'none';
-                    gameContainer.style.opacity = '1';
-                }
-            };
+                    
+                    const dust = document.createElement('div');
+                    dust.className = 'star-dust';
+                    dust.textContent = `+${STARDUST_PER_CLICK}`;
+                    const rect = clickArea.getBoundingClientRect();
+                    dust.style.left = `${e.clientX - rect.left}px`;
+                    dust.style.top = `${e.clientY - rect.top}px`;
+                    clickArea.appendChild(dust);
+                    setTimeout(() => dust.remove(), 1000);
+                });
+                
+                // --- Сохранение и загрузка ---
+                const saveGame = () => {
+                    vkBridge.send('VKWebAppStorageSet', { 
+                        key: SAVE_KEY, 
+                        value: JSON.stringify(gameState) 
+                    }).catch(error => console.error("Ошибка сохранения:", error));
+                };
 
-            initGame();
+                const loadGame = async () => {
+                    try {
+                        const receivedData = await vkBridge.send('VKWebAppStorageGet', { keys: [SAVE_KEY] });
+                        if (receivedData.keys && receivedData.keys[0] && receivedData.keys[0].value) {
+                            const savedState = JSON.parse(receivedData.keys[0].value);
+                            if (savedState && typeof savedState.stardust === 'number') {
+                               gameState = savedState;
+                            }
+                        }
+                    } catch (error) {
+                        console.error("Ошибка загрузки:", error);
+                    }
+                };
+
+                // --- Инициализация игры ---
+                const initGame = async () => {
+                    try {
+                        loaderText.textContent = 'Синхронизация с VK...';
+                        await vkBridge.send('VKWebAppInit');
+                        await loadGame();
+                        setInterval(saveGame, 5000);
+                    } catch (error) {
+                        console.error("Критическая ошибка инициализации:", error);
+                        loaderText.textContent = 'Ошибка подключения к VK';
+                        loaderText.classList.add('text-red-500');
+                    } finally {
+                        updateUI();
+                        loaderOverlay.style.display = 'none';
+                        gameContainer.style.opacity = '1';
+                    }
+                };
+                initGame();
+            }
+
+            // --- Проверка готовности VK Bridge ---
+            function waitForVkBridge() {
+                if (typeof vkBridge !== 'undefined') {
+                    // VK Bridge загружен, запускаем игру
+                    runGame();
+                } else {
+                    attempts++;
+                    if (attempts < maxAttempts) {
+                        // Проверяем еще раз через 100 мс
+                        setTimeout(waitForVkBridge, 100);
+                    } else {
+                        // Не удалось загрузить за 5 секунд
+                        console.error("VK Bridge failed to load in time.");
+                        loaderText.textContent = 'Не удалось загрузить библиотеку VK';
+                        loaderText.classList.add('text-red-500');
+                    }
+                }
+            }
+
+            waitForVkBridge();
         });
     </script>
 </body>
