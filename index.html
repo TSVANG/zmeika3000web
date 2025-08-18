@@ -1,1036 +1,205 @@
 <!DOCTYPE html>
 <html lang="ru">
-
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
-    <title>Судоку</title>
-    <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Космическая Кузница</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Подключение VK Bridge -->
+    <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/vk-bridge.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --bg-color-light: #f0f4f8;
-            --bg-color-dark: #1a1a2e;
-            --surface-color-light: #ffffff;
-            --surface-color-dark: #2a2a4e;
-            --primary-color: #4a90e2;
-            --primary-color-dark: #3a7ac8;
-            --text-color-light: #333333;
-            --text-color-dark: #e0e0e0;
-            --border-color-light: #dcdde1;
-            --border-color-dark: #4a4a68;
-            --shadow-color: rgba(0, 0, 0, 0.1);
-            --font-family: 'Montserrat', sans-serif;
-            --banner-height: 0px; /* Динамическая высота для баннера */
-        }
-
+        /* --- Основные стили и запрет взаимодействия с системой --- */
         html, body {
-            height: 100%;
             width: 100%;
+            height: 100%;
             margin: 0;
-            overflow: hidden;
-            position: fixed;
+            padding: 0;
+            overflow: hidden; /* Запрет прокрутки */
+            touch-action: none; /* Запрет жестов, вызывающих прокрутку */
         }
 
         body {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            font-family: var(--font-family);
-            background-color: var(--bg-color-light);
-            color: var(--text-color-light);
-            transition: background-color 0.4s, color 0.4s;
-            box-sizing: border-box;
-            user-select: none;
+            font-family: 'Orbitron', sans-serif;
+            background: #00000a;
+            color: #e0e0ff;
+            user-select: none; /* Запрет выделения текста */
             -webkit-user-select: none;
+            -moz-user-select: none;
             -ms-user-select: none;
-            touch-action: manipulation;
-        }
-
-        body.dark {
-            background-color: var(--bg-color-dark);
-            color: var(--text-color-dark);
-        }
-
-        #app-container {
-            width: 100%;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            padding: 1rem;
-            box-sizing: border-box;
-            /* Отступ снизу для рекламного баннера */
-            padding-bottom: calc(var(--banner-height) + 1rem);
-            transition: padding-bottom 0.3s ease;
-        }
-
-        #main-content {
-            flex-grow: 1;
             display: flex;
             justify-content: center;
             align-items: center;
-            overflow: hidden;
-            width: 100%;
+            background-image: 
+                radial-gradient(circle at 20% 20%, rgba(100, 100, 255, 0.2) 0%, transparent 40%),
+                radial-gradient(circle at 80% 70%, rgba(255, 100, 150, 0.2) 0%, transparent 40%);
         }
 
-        #menu, #game {
-            display: none;
-            text-align: center;
-            opacity: 0;
-            transition: opacity 0.5s ease, transform 0.5s ease;
-            width: 100%;
-            max-width: 500px;
-            transform: scale(0.95);
+        /* --- Анимации --- */
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 40px #4a00e0, 0 0 60px #8e2de2, inset 0 0 20px rgba(255, 255, 255, 0.3); }
+            50% { transform: scale(1.05); box-shadow: 0 0 60px #8e2de2, 0 0 90px #4a00e0, inset 0 0 30px rgba(255, 255, 255, 0.5); }
         }
 
-        #menu.active, #game.active {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            opacity: 1;
-            transform: scale(1);
-        }
-        
-        #game.active {
-            height: 100%;
+        @keyframes star-dust-animation {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(-150px) scale(0.5); opacity: 0; }
         }
 
-        h1 {
-            font-size: clamp(2.2rem, 7vw, 3rem);
-            font-weight: 700;
-            color: var(--primary-color);
-            margin-bottom: 1.5rem;
-            text-shadow: 2px 2px 4px var(--shadow-color);
+        @keyframes number-pop {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.5); opacity: 0.8; }
+            100% { transform: scale(1); opacity: 1; }
         }
 
-        body.dark h1 {
-            color: #88b3f1;
-        }
-
-        /* --- Buttons --- */
-        .btn {
-            font-family: var(--font-family);
-            font-size: clamp(0.9rem, 2.5vw, 1rem);
-            font-weight: 600;
-            padding: 12px 20px;
-            border-radius: 12px;
-            border: none;
-            cursor: pointer;
-            transition: all 0.2s ease-out;
-            box-shadow: 0 4px 6px var(--shadow-color), 0 1px 3px var(--shadow-color);
-            background-color: var(--surface-color-light);
-            color: var(--primary-color);
-            margin: 6px 0;
-            width: 80%;
-            max-width: 300px;
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 12px var(--shadow-color), 0 3px 6px var(--shadow-color);
-        }
-
-        .btn:active {
-            transform: translateY(1px);
-            box-shadow: 0 2px 4px var(--shadow-color);
-        }
-
-        body.dark .btn {
-            background-color: var(--surface-color-dark);
-            color: #a7c7fa;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.2), 0 1px 3px rgba(0,0,0,0.2);
-        }
-
-        /* --- Sudoku Board --- */
-        #sudoku-board {
-            border: 3px solid var(--primary-color);
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 8px 16px var(--shadow-color);
-            margin: 15px auto;
-            background-color: var(--surface-color-light);
-            width: 100%;
-            max-width: 500px;
-            aspect-ratio: 1 / 1;
-        }
-        
-        body.dark #sudoku-board {
-             border-color: var(--border-color-dark);
-             background-color: var(--surface-color-dark);
-        }
-
-        table {
-            width: 100%;
-            height: 100%;
-            border-collapse: collapse;
-        }
-
-        td {
-            width: 11.11%;
-            height: 11.11%;
-            text-align: center;
-            border: 1px solid var(--border-color-light);
-            font-size: clamp(0.9rem, 4vw, 1.5rem);
-            cursor: pointer;
-            transition: background-color 0.2s;
-            font-weight: 600;
-        }
-        
-        body.dark td {
-            border-color: var(--border-color-dark);
-        }
-
-        tr:nth-child(3) td, tr:nth-child(6) td {
-            border-bottom: 3px solid var(--primary-color);
-        }
-        td:nth-child(3), td:nth-child(6) {
-            border-right: 3px solid var(--primary-color);
-        }
-        body.dark tr:nth-child(3) td, body.dark tr:nth-child(6) td {
-            border-bottom-color: var(--border-color-dark);
-        }
-        body.dark td:nth-child(3), body.dark td:nth-child(6) {
-            border-right-color: var(--border-color-dark);
-        }
-
-
-        .player-number { color: var(--primary-color); }
-        body.dark .player-number { color: #a7c7fa; }
-
-        .incorrect { color: #e74c3c; animation: shake 0.5s; }
-
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-5px); }
-            75% { transform: translateX(5px); }
-        }
-
-        /* Highlighting */
-        .highlight-row, .highlight-col { background-color: rgba(74, 144, 226, 0.1); }
-        .highlight { background-color: rgba(74, 144, 226, 0.2); }
-        .selected { background-color: rgba(74, 144, 226, 0.4) !important; }
-        
-        body.dark .highlight-row, body.dark .highlight-col { background-color: rgba(167, 199, 250, 0.1); }
-        body.dark .highlight { background-color: rgba(167, 199, 250, 0.2); }
-        body.dark .selected { background-color: rgba(167, 199, 250, 0.4) !important; }
-
-        /* --- Game Controls --- */
-        #top-controls {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            width: 100%;
-            margin-bottom: 10px;
-        }
-        .icon-btn {
-            background: var(--surface-color-light);
-            border: none;
-            font-size: clamp(1.2rem, 3vw, 1.5rem);
-            cursor: pointer;
-            color: var(--text-color-light);
-            transition: all 0.2s;
-            width: clamp(38px, 8vw, 44px);
-            height: clamp(38px, 8vw, 44px);
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            box-shadow: 0 2px 5px var(--shadow-color);
-        }
-        .icon-btn:hover { transform: scale(1.1); }
-        body.dark .icon-btn { 
-            background: var(--surface-color-dark);
-            color: var(--text-color-dark);
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-        }
-
-        #game-info {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            font-weight: 600;
-            flex-grow: 1;
-            justify-content: center;
-        }
-        #lives, #difficulty, #time {
-             background-color: var(--surface-color-light);
-             padding: 8px 12px;
-             border-radius: 8px;
-             box-shadow: 0 2px 4px var(--shadow-color);
-             font-size: clamp(0.7rem, 2vw, 0.9rem);
-        }
-        body.dark #lives, body.dark #difficulty, body.dark #time {
-            background-color: var(--surface-color-dark);
-        }
-
-        #number-buttons {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: clamp(6px, 2vw, 10px);
-            margin: 15px 0;
-        }
-        .number-btn {
-            width: 100%;
-            aspect-ratio: 1 / 1;
-            font-size: clamp(1.2rem, 4vw, 1.5rem);
-            font-weight: 600;
-            color: var(--primary-color);
-            background-color: var(--surface-color-light);
-            border: 2px solid var(--border-color-light);
-            border-radius: 10px;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        .number-btn:hover {
-            background-color: var(--primary-color);
-            color: white;
-            border-color: var(--primary-color);
-        }
-        body.dark .number-btn {
-            background-color: var(--surface-color-dark);
-            color: #a7c7fa;
-            border-color: var(--border-color-dark);
-        }
-        body.dark .number-btn:hover {
-            background-color: #a7c7fa;
-            color: var(--bg-color-dark);
-            border-color: #a7c7fa;
-        }
-
-        /* --- Modals --- */
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0; top: 0;
-            width: 100%; height: 100%;
-            background-color: rgba(0, 0, 0, 0.6);
-            justify-content: center;
-            align-items: center;
-            animation: fadeIn 0.3s;
-        }
-        .modal-content {
-            background: var(--surface-color-light);
-            padding: 2rem;
-            border-radius: 16px;
-            text-align: center;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            width: 90%;
-            max-width: 400px;
-            animation: slideIn 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-        }
-        body.dark .modal-content {
-            background-color: var(--surface-color-dark);
-        }
-        .modal h2 {
-            margin-top: 0;
-            color: var(--primary-color);
-            font-size: 1.8rem;
-        }
-        body.dark .modal h2 { color: #a7c7fa; }
-        .modal p { font-size: 1.1rem; margin-bottom: 1.5rem; }
-        .modal-buttons {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            align-items: center;
-        }
-        
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes slideIn { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-
-        /* Rules Modal */
-        #rules-modal ul {
-            list-style: none;
-            padding: 0;
-            text-align: left;
-        }
-        #rules-modal li {
-            padding: 10px;
-            border-bottom: 1px solid var(--border-color-light);
-            opacity: 0;
-            transform: translateX(-20px);
-            animation: rule-appear 0.5s forwards;
-        }
-        #rules-modal li:last-child { border-bottom: none; }
-        body.dark #rules-modal li { border-color: var(--border-color-dark); }
-        
-        @keyframes rule-appear {
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
-        }
-        #rules-modal li:nth-child(1) { animation-delay: 0.2s; }
-        #rules-modal li:nth-child(2) { animation-delay: 0.4s; }
-        #rules-modal li:nth-child(3) { animation-delay: 0.6s; }
-        #rules-modal li:nth-child(4) { animation-delay: 0.8s; }
-
-        /* Stats Modal */
-        #stats-container {
-            text-align: left;
-            max-height: 50vh;
-            overflow-y: auto;
-            padding-right: 15px;
-        }
-        .stats-level {
-            margin-bottom: 1rem;
-            background-color: rgba(74, 144, 226, 0.05);
-            padding: 15px;
-            border-radius: 10px;
-        }
-        body.dark .stats-level {
-            background-color: rgba(167, 199, 250, 0.1);
-        }
-        .stats-level h3 {
-            margin: 0 0 0.5rem 0;
-            color: var(--primary-color);
-            font-size: 1.2rem;
-        }
-        body.dark .stats-level h3 { color: #a7c7fa; }
-        .stats-level p {
-            margin: 4px 0;
-            font-size: 1rem;
-        }
-
-        /* --- Theme Switch --- */
-        .theme-switcher-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 12px;
-            margin-top: 20px;
-        }
-        .theme-switcher-container span {
-            font-size: 1.5rem;
-        }
-        .theme-switch {
-            position: relative;
-            display: inline-block;
-            width: 60px;
-            height: 34px;
-        }
-        .theme-switch input { opacity: 0; width: 0; height: 0; }
-        .slider {
+        .star-dust {
             position: absolute;
-            cursor: pointer;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background-color: #ccc;
-            transition: .4s;
-            border-radius: 34px;
-        }
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 26px; width: 26px;
-            left: 4px; bottom: 4px;
-            background-color: white;
-            transition: .4s;
-            border-radius: 50%;
-        }
-        input:checked + .slider { background-color: var(--primary-color); }
-        input:checked + .slider:before { transform: translateX(26px); }
-        
-        #banner-ad-container {
-            width: 100%;
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            z-index: 2000;
+            font-size: 2rem;
+            color: #fff;
+            text-shadow: 0 0 5px #fff, 0 0 10px #ff0;
+            animation: star-dust-animation 1s ease-out forwards;
+            pointer-events: none;
         }
 
+        .number-pop-animation {
+            animation: number-pop 0.3s ease-in-out;
+        }
+
+        #proto-star {
+            animation: pulse 5s infinite ease-in-out;
+        }
     </style>
 </head>
+<body oncontextmenu="return false;">
 
-<body>
-    <div id="app-container">
-        <div id="main-content">
-            <div id="menu" class="active">
-                <h1>Судоку</h1>
-                <div id="difficulty-buttons">
-                    <button class="btn" onclick="startGame('easy')">Легкий</button>
-                    <button class="btn" onclick="startGame('medium')">Средний</button>
-                    <button class="btn" onclick="startGame('hard')">Сложный</button>
-                    <button class="btn" onclick="startGame('expert')">Эксперт</button>
-                    <button class="btn" onclick="startGame('extreme')">Экстремальный</button>
-                </div>
-                <button class="btn" onclick="showRules()">Правила 📖</button>
-                <button class="btn" onclick="showStats()">Статистика 📊</button>
-                <div class="theme-switcher-container">
-                    <span>☀️</span>
-                    <label class="theme-switch">
-                        <input type="checkbox" id="theme-toggle" onchange="toggleTheme()">
-                        <span class="slider"></span>
-                    </label>
-                    <span>🌙</span>
-                </div>
-            </div>
+    <!-- Основной контейнер игры -->
+    <div id="game-container" class="w-full h-full max-w-7xl max-h-[1200px] mx-auto flex flex-col p-4 sm:p-8 gap-8 items-center justify-center">
 
-            <div id="game">
-                <div id="top-controls">
-                    <button id="back-btn" class="icon-btn" onclick="showMenu()">⬅️</button>
-                    <div id="game-info">
-                        <div id="lives">❤️ ❤️ ❤️</div>
-                        <div id="difficulty">Легкий</div>
-                        <div id="time">00:00</div>
-                    </div>
-                    <button id="pause-btn" class="icon-btn" onclick="togglePause()">⏸️</button>
-                </div>
-                <table id="sudoku-board"></table>
-                <div id="number-buttons">
-                    <!-- Numbers will be generated by JS -->
-                </div>
-                <button id="hint-btn" class="btn" onclick="giveHint()">Подсказка 💡</button>
+        <!-- Статистика -->
+        <div class="w-full max-w-md text-center bg-black/30 p-4 sm:p-6 rounded-xl border border-purple-700/50 shadow-lg">
+            <h1 class="text-3xl sm:text-4xl md:text-5xl font-bold text-yellow-300 drop-shadow-[0_0_5px_rgba(255,255,0,0.7)]" id="stardust-counter">0</h1>
+            <p class="text-base sm:text-lg text-purple-300 mt-2">Звёздной Пыли</p>
+        </div>
+
+        <!-- Зона клика (Протозвезда) -->
+        <div id="click-area" class="relative w-full flex-grow flex items-center justify-center">
+            <div id="proto-star" class="w-[200px] h-[200px] sm:w-[250px] sm:h-[250px] md:w-[300px] md:h-[300px] lg:w-[400px] lg:h-[400px] bg-gradient-to-br from-yellow-200 via-orange-400 to-red-500 rounded-full cursor-pointer transition-transform duration-100 active:scale-95 flex items-center justify-center">
+                 <div class="w-full h-full bg-white/30 rounded-full blur-xl"></div>
             </div>
         </div>
-        <div id="banner-ad-container"></div>
-    </div>
 
-    <!-- Modals -->
-    <div id="game-over-modal" class="modal">
-        <div class="modal-content">
-            <h2>Вы проиграли</h2>
-            <p>Не отчаивайтесь, попробуйте еще раз!</p>
-            <div class="modal-buttons">
-                <button class="btn" onclick="restartGame()">Начать заново</button>
-                <button class="btn" onclick="showMenu()">В меню</button>
-            </div>
-        </div>
-    </div>
-    
-    <div id="win-modal" class="modal">
-        <div class="modal-content">
-            <h2>Поздравляем!</h2>
-            <p id="completion-time">Время: 00:00</p>
-            <div class="modal-buttons">
-                <button class="btn" onclick="restartGame()">Начать заново</button>
-                <button class="btn" onclick="showMenu()">В меню</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="pause-modal" class="modal">
-        <div class="modal-content">
-            <h2>Пауза</h2>
-            <p id="paused-time">Время: 00:00</p>
-            <p id="paused-difficulty">Сложность: Легкий</p>
-            <div class="modal-buttons">
-                <button class="btn" onclick="resumeGame()">Продолжить</button>
-                <button class="btn" onclick="restartGame()">Заново</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="rules-modal" class="modal">
-        <div class="modal-content">
-            <h2>Правила Судоку</h2>
-            <ul>
-                <li>✔️ Заполните пустые клетки цифрами от 1 до 9.</li>
-                <li>✔️ В каждой строке цифры не должны повторяться.</li>
-                <li>✔️ В каждом столбце цифры не должны повторяться.</li>
-                <li>✔️ В каждом малом квадрате 3x3 цифры не должны повторяться.</li>
-            </ul>
-            <button class="btn" onclick="hideRules()">Понятно</button>
-        </div>
-    </div>
-
-    <div id="stats-modal" class="modal">
-        <div class="modal-content">
-            <h2>Статистика</h2>
-            <div id="stats-container"></div>
-            <button class="btn" onclick="hideStats()">Закрыть</button>
-        </div>
     </div>
 
     <script>
-    document.addEventListener('DOMContentLoaded', () => {
-        // --- VK Bridge Initialization ---
-        if (window.vkBridge) {
-            vkBridge.send('VKWebAppInit');
-            showBannerAd();
-        }
-
-        // --- Banner Adaptation ---
-        function setupBannerObserver() {
-            const bannerContainer = document.getElementById('banner-ad-container');
-            if (!bannerContainer || typeof ResizeObserver === 'undefined') return;
-
-            const observer = new ResizeObserver(entries => {
-                for (let entry of entries) {
-                    const height = entry.contentRect.height;
-                    document.documentElement.style.setProperty('--banner-height', `${height}px`);
-                }
-            });
-            observer.observe(bannerContainer);
-        }
-
-        // --- Disable Context Menu ---
-        document.addEventListener('contextmenu', event => event.preventDefault());
-
-        // --- Game State Variables ---
-        let timerInterval;
-        let startTime;
-        let elapsedTime = 0;
-        let isPaused = false;
-        let lives = 3;
-        let currentLevel = '';
-        let selectedCell = null;
-        let solutionGrid = [];
-        let initialNumbers = [];
-
-        // --- Difficulty Levels ---
-        const difficultyLevels = {
-            easy: 35, medium: 45, hard: 53, expert: 58, extreme: 64,
-        };
-        const difficultyNames = {
-            easy: "Легкий", medium: "Средний", hard: "Сложный", expert: "Эксперт", extreme: "Экстремальный"
-        };
-
-        // --- DOM Elements ---
-        const menuEl = document.getElementById('menu');
-        const gameEl = document.getElementById('game');
-        const timeEl = document.getElementById('time');
-        const livesEl = document.getElementById('lives');
-        const difficultyEl = document.getElementById('difficulty');
-        const boardEl = document.getElementById('sudoku-board');
-        const numberButtonsEl = document.getElementById('number-buttons');
-        const bodyEl = document.body;
-        
-        const winModal = document.getElementById('win-modal');
-        const gameOverModal = document.getElementById('game-over-modal');
-        const pauseModal = document.getElementById('pause-modal');
-        const rulesModal = document.getElementById('rules-modal');
-        const statsModal = document.getElementById('stats-modal');
-
-        // --- Initialization ---
-        initStats();
-        setupBannerObserver(); // Отслеживаем размер баннера
-        generateNumberButtons();
-        showMenu(); // Show menu on start
-
-        function generateNumberButtons() {
-            numberButtonsEl.innerHTML = ''; // Clear previous buttons
-            for (let i = 1; i <= 9; i++) {
-                const button = document.createElement('button');
-                button.className = 'number-btn';
-                button.textContent = i;
-                button.onclick = () => selectNumber(i);
-                numberButtonsEl.appendChild(button);
-            }
-            const eraseButton = document.createElement('button');
-            eraseButton.className = 'number-btn';
-            eraseButton.textContent = '←';
-            eraseButton.onclick = clearNumber;
-            numberButtonsEl.appendChild(eraseButton);
-        }
-
-        // --- Game Flow ---
-        function showMenu() {
-            [winModal, gameOverModal, pauseModal, rulesModal, statsModal].forEach(modal => modal.style.display = 'none');
-            gameEl.classList.remove('active');
-            menuEl.classList.add('active');
-            clearInterval(timerInterval);
-        }
-        
-        function startGame(level) {
-            currentLevel = level;
-            difficultyEl.innerText = difficultyNames[level];
-            
-            menuEl.classList.remove('active');
-            gameEl.classList.add('active');
-            
-            resetLives();
-            elapsedTime = 0;
-            generateSudokuBoard(level);
-            startTimer();
-        }
-
-        function restartGame() {
-            [winModal, gameOverModal, pauseModal].forEach(modal => modal.style.display = 'none');
-            isPaused = false;
-            startGame(currentLevel);
-        }
-
-        // --- Timer ---
-        function startTimer() {
-            clearInterval(timerInterval);
-            startTime = Date.now() - (elapsedTime * 1000);
-            timerInterval = setInterval(updateTime, 1000);
-        }
-
-        function updateTime() {
-            if (isPaused) return;
-            elapsedTime = Math.floor((Date.now() - startTime) / 1000);
-            const minutes = String(Math.floor(elapsedTime / 60)).padStart(2, '0');
-            const seconds = String(elapsedTime % 60).padStart(2, '0');
-            timeEl.innerText = `${minutes}:${seconds}`;
-        }
-
-        // --- Board Generation ---
-        function generateSudokuBoard(level) {
-            const grid = createFullGrid();
-            solutionGrid = JSON.parse(JSON.stringify(grid));
-            removeCells(grid, difficultyLevels[level]);
-            initialNumbers = grid.map(row => row.slice());
-            drawGrid(boardEl, grid);
-        }
-
-        function drawGrid(board, grid) {
-            board.innerHTML = '';
-            for (let i = 0; i < 9; i++) {
-                const row = document.createElement('tr');
-                for (let j = 0; j < 9; j++) {
-                    const cell = document.createElement('td');
-                    cell.textContent = grid[i][j] || '';
-                    if (grid[i][j] === null) {
-                        cell.addEventListener('click', () => selectCell(cell));
-                    } else {
-                        cell.style.color = bodyEl.classList.contains('dark') ? '#c9d1d9' : '#586069';
-                        cell.style.fontWeight = '700';
-                    }
-                    row.appendChild(cell);
-                }
-                board.appendChild(row);
-            }
-        }
-
-        // --- Sudoku Logic (Generator) ---
-        function createFullGrid() {
-            const grid = Array.from({ length: 9 }, () => Array(9).fill(0));
-            solveSudoku(grid);
-            return grid;
-        }
-
-        function solveSudoku(grid) {
-            const emptySpot = findEmptySpot(grid);
-            if (!emptySpot) return true;
-            const [row, col] = emptySpot;
-
-            const nums = [1, 2, 3, 4, 5, 6, 7, 8, 9].sort(() => Math.random() - 0.5);
-
-            for (let num of nums) {
-                if (isValid(grid, row, col, num)) {
-                    grid[row][col] = num;
-                    if (solveSudoku(grid)) return true;
-                    grid[row][col] = 0;
-                }
-            }
-            return false;
-        }
-
-        function findEmptySpot(grid) {
-            for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) if (grid[r][c] === 0) return [r, c];
-            return null;
-        }
-
-        function isValid(grid, row, col, num) {
-            for (let x = 0; x < 9; x++) if (grid[row][x] === num || grid[x][col] === num) return false;
-            const startRow = row - row % 3, startCol = col - col % 3;
-            for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) if (grid[i + startRow][j + startCol] === num) return false;
-            return true;
-        }
-
-        function removeCells(grid, cellsToRemove) {
-            let attempts = 81;
-            while (cellsToRemove > 0 && attempts > 0) {
-                const row = Math.floor(Math.random() * 9);
-                const col = Math.floor(Math.random() * 9);
-                if (grid[row][col] !== null) {
-                    grid[row][col] = null;
-                    cellsToRemove--;
-                }
-                attempts--;
-            }
-        }
-
-        // --- Player Interaction ---
-        function selectCell(cell) {
-            if (selectedCell) {
-                selectedCell.classList.remove('selected');
-                clearHighlight();
-            }
-            selectedCell = cell;
-            selectedCell.classList.add('selected');
-            highlightRelated(cell);
-        }
-
-        function selectNumber(num) {
-            if (!selectedCell) return;
-            const cellRow = selectedCell.parentElement.rowIndex;
-            const cellCol = selectedCell.cellIndex;
-
-            if (initialNumbers[cellRow][cellCol] !== null) return;
-
-            if (solutionGrid[cellRow][cellCol] === num) {
-                selectedCell.textContent = num;
-                selectedCell.classList.add('player-number');
-                selectedCell.classList.remove('incorrect');
-                checkWin();
-            } else {
-                selectedCell.textContent = num;
-                selectedCell.classList.add('incorrect');
-                loseLife();
-                setTimeout(() => {
-                    if (selectedCell.textContent == num) {
-                       selectedCell.textContent = '';
-                       selectedCell.classList.remove('incorrect');
-                    }
-                }, 1000);
-            }
-        }
-        
-        function clearNumber() {
-            if (selectedCell) {
-                const cellRow = selectedCell.parentElement.rowIndex;
-                const cellCol = selectedCell.cellIndex;
-                if (initialNumbers[cellRow][cellCol] === null) {
-                    selectedCell.textContent = '';
-                }
-            }
-        }
-        
-        function provideActualHint() {
-            const emptyCells = [];
-            boardEl.querySelectorAll('td').forEach(cell => {
-                if (cell.textContent === '') emptyCells.push(cell);
-            });
-
-            if (emptyCells.length > 0) {
-                const randomCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
-                const cellRow = randomCell.parentElement.rowIndex;
-                const cellCol = randomCell.cellIndex;
-                randomCell.textContent = solutionGrid[cellRow][cellCol];
-                randomCell.classList.add('player-number');
-                checkWin();
-            }
-        }
-
-        async function giveHint() {
-            await showInterstitialAd();
-            provideActualHint();
-        }
-        
-        // --- Highlighting ---
-        function clearHighlight() {
-            boardEl.querySelectorAll('td').forEach(c => c.classList.remove('highlight', 'highlight-row', 'highlight-col'));
-        }
-
-        function highlightRelated(cell) {
-            const row = cell.parentElement.rowIndex;
-            const col = cell.cellIndex;
-            const num = cell.textContent;
-
-            for (let i = 0; i < 9; i++) {
-                boardEl.rows[row].cells[i].classList.add('highlight-row');
-                boardEl.rows[i].cells[col].classList.add('highlight-col');
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- Проверка на наличие vkBridge и его инициализация ---
+            const isVkEnv = typeof vkBridge !== 'undefined';
+            if (isVkEnv) {
+                vkBridge.send('VKWebAppInit');
             }
 
-            if (num) {
-                boardEl.querySelectorAll('td').forEach(c => {
-                    if (c.textContent === num) c.classList.add('highlight');
-                });
-            }
-        }
+            // --- Элементы DOM ---
+            const stardustCounter = document.getElementById('stardust-counter');
+            const protoStar = document.getElementById('proto-star');
+            const clickArea = document.getElementById('click-area');
 
-        // --- Lives & Win/Loss ---
-        async function loseLife() {
-            if (lives > 0) {
-                lives--;
-                updateLivesDisplay();
-                if (lives === 0) {
-                    clearInterval(timerInterval);
-                    await updateStats(currentLevel, elapsedTime, false);
-                    await showInterstitialAd();
-                    gameOverModal.style.display = 'flex';
-                }
-            }
-        }
+            // --- Игровое состояние ---
+            let gameState = {
+                stardust: 0,
+            };
 
-        function resetLives() {
-            lives = 3;
-            updateLivesDisplay();
-        }
+            const STARDUST_PER_CLICK = 1;
+            const SAVE_KEY = 'cosmicForgeSaveData'; // Ключ для хранения
 
-        function updateLivesDisplay() {
-            livesEl.textContent = '❤️ '.repeat(lives) + '🖤 '.repeat(3 - lives);
-        }
+            // --- Форматирование чисел ---
+            const formatNumber = (num) => {
+                if (num < 1000) return num.toFixed(0);
+                const suffixes = ["", "K", "M", "B", "T", "Qa", "Qi"];
+                const i = Math.floor(Math.log10(num) / 3);
+                const value = (num / Math.pow(1000, i));
+                return value.toFixed(i > 0 ? 2 : 0) + suffixes[i];
+            };
 
-        async function checkWin() {
-            const isFull = [...boardEl.querySelectorAll('td')].every(cell => cell.textContent !== '');
-            if (isFull) {
-                clearInterval(timerInterval);
-                document.getElementById('completion-time').innerText = `Время: ${timeEl.innerText}`;
-                await updateStats(currentLevel, elapsedTime, true);
-                await showInterstitialAd();
-                winModal.style.display = 'flex';
-            }
-        }
-        
-        // --- Pause ---
-        function togglePause() {
-            if (isPaused) {
-                resumeGame();
-            } else {
-                isPaused = true;
-                clearInterval(timerInterval);
-                document.getElementById('paused-time').innerText = `Время: ${timeEl.innerText}`;
-                document.getElementById('paused-difficulty').innerText = `Сложность: ${difficultyEl.innerText}`;
-                pauseModal.style.display = 'flex';
-            }
-        }
+            // --- Обновление UI ---
+            const updateUI = () => {
+                stardustCounter.textContent = formatNumber(gameState.stardust);
+                stardustCounter.classList.add('number-pop-animation');
+                stardustCounter.onanimationend = () => stardustCounter.classList.remove('number-pop-animation');
+            };
 
-        function resumeGame() {
-            isPaused = false;
-            pauseModal.style.display = 'none';
-            startTimer();
-        }
+            // --- Клик по звезде ---
+            protoStar.addEventListener('mousedown', (e) => {
+                gameState.stardust += STARDUST_PER_CLICK;
+                updateUI();
 
-        // --- Theme ---
-        function toggleTheme() {
-            bodyEl.classList.toggle('dark');
-            if (currentLevel) {
-                 drawGrid(boardEl, initialNumbers);
-            }
-        }
-
-        // --- Rules & Stats Modals ---
-        window.showRules = () => { rulesModal.style.display = 'flex'; }
-        window.hideRules = () => { rulesModal.style.display = 'none'; }
-        window.showStats = () => { displayStats(); statsModal.style.display = 'flex'; }
-        window.hideStats = () => { statsModal.style.display = 'none'; }
-        
-        // --- VK Ads ---
-        async function showBannerAd() {
-            if (window.vkBridge && vkBridge.supports('VKWebAppShowBannerAd')) {
-                try {
-                    const adData = await vkBridge.send('VKWebAppShowBannerAd', {
-                        banner_location: 'bottom'
-                    });
-                    if (!adData.result) {
-                        console.log('Banner ad not shown');
-                        document.documentElement.style.setProperty('--banner-height', '0px');
-                    }
-                } catch (error) {
-                    console.error('Banner ad error:', error);
-                    document.documentElement.style.setProperty('--banner-height', '0px');
-                }
-            }
-        }
-
-        async function showInterstitialAd() {
-            if (window.vkBridge && vkBridge.supports('VKWebAppShowNativeAds')) {
-                try {
-                    await vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'interstitial' });
-                } catch (error) {
-                    console.error('Interstitial ad error:', error);
-                }
-            }
-        }
-
-        // --- Statistics Logic (VK Storage) ---
-        async function initStats() {
-            if (!window.vkBridge) return;
-            try {
-                const data = await vkBridge.send('VKWebAppStorageGet', { keys: ['sudokuStats'] });
-                const statsValue = data.keys[0].value;
-                if (!statsValue || statsValue === "") {
-                    const initialStats = {};
-                    Object.keys(difficultyLevels).forEach(level => {
-                        initialStats[level] = { games: 0, wins: 0, bestTime: null };
-                    });
-                    await vkBridge.send('VKWebAppStorageSet', {
-                        key: 'sudokuStats',
-                        value: JSON.stringify(initialStats)
-                    });
-                }
-            } catch (e) {
-                console.error("VK Storage init error: ", e);
-            }
-        }
-
-        async function updateStats(level, time, won) {
-            if (!window.vkBridge || !level) return;
-            try {
-                const data = await vkBridge.send('VKWebAppStorageGet', { keys: ['sudokuStats'] });
-                const statsValue = data.keys[0].value;
-                let stats = statsValue ? JSON.parse(statsValue) : {};
-
-                if (!stats[level]) {
-                    stats[level] = { games: 0, wins: 0, bestTime: null };
-                }
-
-                stats[level].games++;
-                if (won) {
-                    stats[level].wins++;
-                    if (stats[level].bestTime === null || time < stats[level].bestTime) {
-                        stats[level].bestTime = time;
-                    }
-                }
-                await vkBridge.send('VKWebAppStorageSet', {
-                    key: 'sudokuStats',
-                    value: JSON.stringify(stats)
-                });
-            } catch (e) {
-                console.error("VK Storage update error: ", e);
-            }
-        }
-
-        async function displayStats() {
-            if (!window.vkBridge) {
-                document.getElementById('stats-container').innerHTML = "<p>Статистика доступна только в приложении VK.</p>";
-                return;
-            }
-            try {
-                const data = await vkBridge.send('VKWebAppStorageGet', { keys: ['sudokuStats'] });
-                const statsValue = data.keys[0].value;
-                const container = document.getElementById('stats-container');
-                container.innerHTML = '';
+                // Создание визуального эффекта "+1"
+                const dust = document.createElement('div');
+                dust.className = 'star-dust';
+                dust.textContent = `+${STARDUST_PER_CLICK}`;
                 
-                if (!statsValue) {
-                    container.innerHTML = "<p>Вы еще не играли ни одной игры.</p>";
-                    return;
+                const rect = clickArea.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+
+                dust.style.left = `${x}px`;
+                dust.style.top = `${y}px`;
+                clickArea.appendChild(dust);
+
+                setTimeout(() => {
+                    dust.remove();
+                }, 1000);
+            });
+            
+            // --- Сохранение и загрузка ---
+            const saveGame = () => {
+                const data = JSON.stringify(gameState);
+                if (isVkEnv) {
+                    vkBridge.send('VKWebAppStorageSet', { 
+                        key: SAVE_KEY, 
+                        value: data 
+                    }).catch(error => {
+                        console.error("Ошибка сохранения в VK Storage:", error);
+                    });
+                } else {
+                    localStorage.setItem(SAVE_KEY, data);
                 }
+            };
 
-                const stats = JSON.parse(statsValue);
+            const loadGame = async () => {
+                try {
+                    let savedState = null;
+                    if (isVkEnv) {
+                        const receivedData = await vkBridge.send('VKWebAppStorageGet', { keys: [SAVE_KEY] });
+                        if (receivedData.keys[0].value) {
+                            savedState = JSON.parse(receivedData.keys[0].value);
+                        }
+                    } else {
+                        const localData = localStorage.getItem(SAVE_KEY);
+                        if (localData) {
+                            savedState = JSON.parse(localData);
+                        }
+                    }
 
-                Object.keys(difficultyNames).forEach(level => {
-                    const levelStats = stats[level] || { games: 0, wins: 0, bestTime: null };
-                    const bestTime = levelStats.bestTime !== null 
-                        ? `${String(Math.floor(levelStats.bestTime / 60)).padStart(2, '0')}:${String(levelStats.bestTime % 60).padStart(2, '0')}`
-                        : 'Нет';
+                    if (savedState && typeof savedState.stardust === 'number') {
+                       gameState = savedState;
+                    }
+                } catch (error) {
+                    console.error("Ошибка загрузки:", error);
+                } finally {
+                    updateUI();
+                }
+            };
 
-                    const levelDiv = document.createElement('div');
-                    levelDiv.className = 'stats-level';
-                    levelDiv.innerHTML = `
-                        <h3>${difficultyNames[level]}</h3>
-                        <p><strong>Сыграно игр:</strong> ${levelStats.games}</p>
-                        <p><strong>Побед:</strong> ${levelStats.wins}</p>
-                        <p><strong>Лучшее время:</strong> ${bestTime}</p>
-                    `;
-                    container.appendChild(levelDiv);
-                });
-            } catch (e) {
-                console.error("VK Storage display error: ", e);
-                document.getElementById('stats-container').innerHTML = "<p>Ошибка при загрузке статистики.</p>";
-            }
-        }
-        
-        // Make functions globally accessible for onclick attributes
-        window.startGame = startGame;
-        window.restartGame = restartGame;
-        window.showMenu = showMenu;
-        window.togglePause = togglePause;
-        window.resumeGame = resumeGame;
-        window.giveHint = giveHint;
-        window.toggleTheme = toggleTheme;
-    });
+            // --- Инициализация игры ---
+            const initGame = async () => {
+                await loadGame();
+                setInterval(saveGame, 5000); // Сохранение каждые 5 секунд
+            };
+
+            initGame();
+        });
     </script>
 </body>
 </html>
